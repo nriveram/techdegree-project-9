@@ -37,7 +37,7 @@ router.get('/courses', asyncHandler(async (req, res) => {
         include: [
             {
                 model: User, 
-                as: 'Student'
+                as: 'student'
             }
         ],
     });
@@ -75,5 +75,48 @@ router.post('/courses', asyncHandler(async (req, res) => {
         }
     }
 }));
+
+// Route that updates corresponding course 
+router.put('/courses/:id', asyncHandler(async (req, res) => {
+    let course; 
+    try {
+        course = await Course.findByPk(req.params.id); 
+        if (course) {
+            await course.update(req.body);
+            res.status(204).end();
+        } else {
+            res.sendStatus(404); 
+        }
+    } catch(error) {
+        if (error.name === 'SequelizeValidationError') {
+            const errors = error.errors.map(err => err.message);
+            res.status(400).json({ errors });   
+        } else {
+            throw error;
+        }
+    }
+    
+}));
+
+// Route that deletes correspondig course
+router.delete('/courses/:id', asyncHandler(async (req, res) => {
+    let course; 
+    try {
+        course = await Course.findByPk(req.params.id); 
+        if (course) {
+            await course.destroy();
+            res.status(204).end();
+        } else {
+            res.sendStatus(404); 
+        }
+    } catch(error) {
+        if (error.name === 'SequelizeValidationError') {
+            const errors = error.errors.map(err => err.message);
+            res.status(400).json({ errors });   
+        } else {
+            throw error;
+        }
+    }
+}));  
 
 module.exports = router;
