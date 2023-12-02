@@ -4,8 +4,6 @@ const express = require('express');
 const { asyncHandler } = require('./middleware/async-handler');
 const { User, Course } = require('./models');
 const { authenticateUser } = require('./middleware/auth-user');
-const auth = require('basic-auth');
-const bcrypt = require('bcrypt');
 
 // Construct a router instance.
 const router = express.Router();
@@ -14,7 +12,6 @@ router.get('/users', authenticateUser, asyncHandler(async (req, res) => {
     const user = req.currentUser;
     //const credentials = auth(req);
     //const user = await User.findOne({ where: {emailAddress: credentials.name} });
-    //const users = await User.findAll();
     res.status(200).json(user);
 }));
 
@@ -22,10 +19,7 @@ router.get('/users', authenticateUser, asyncHandler(async (req, res) => {
 router.post('/users', asyncHandler(async (req, res) => {
     try {
     
-        const user = await User.create(req.body);
-        const hashedPassword = bcrypt.hashSync(user.password, 10);
-        user.password = hashedPassword; 
-
+        await User.create(req.body);
         res.status(201).location('/').end();
     } catch (error) {
         if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
@@ -40,10 +34,12 @@ router.post('/users', asyncHandler(async (req, res) => {
 // Route that retrieves all courses and Users associated 
 router.get('/courses', asyncHandler(async (req, res) => {
     const courses = await Course.findAll({
+        attributes: { exclude: ['createdAt', 'updatedAt']},
         include: [
             {
                 model: User, 
-                as: 'student'
+                as: 'student',
+                attributes: {exclude: ['password', 'createdAt', 'updatedAt']}
             }
         ],
     });
@@ -53,6 +49,7 @@ router.get('/courses', asyncHandler(async (req, res) => {
 // Route that returns the corresponding course and User associated 
 router.get('/courses/:id', asyncHandler(async (req, res) => {
     const course = await Course.findOne({ 
+        attributes: { exclude: ['createdAt', 'updatedAt']},
         where: 
             {
                 id: req.params.id
@@ -60,7 +57,8 @@ router.get('/courses/:id', asyncHandler(async (req, res) => {
         include: [
             {
                 model: User, 
-                as: 'student'
+                as: 'student',
+                attributes: {exclude: ['password', 'createdAt', 'updatedAt']}
             }
         ] 
     });
@@ -86,10 +84,16 @@ router.post('/courses', authenticateUser, asyncHandler(async (req, res) => {
 router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
     let course; 
     try {
+        const user = req.currentUser;
         course = await Course.findByPk(req.params.id); 
         if (course) {
-            await course.update(req.body);
-            res.status(204).end();
+            // checks if course id and user id match 
+            if (user.id == req.params.id) {
+                await course.update(req.body);
+                res.status(204).end();
+            } else {
+                res.sendStatus(403);
+            }
         } else {
             res.sendStatus(404); 
         }
@@ -108,10 +112,15 @@ router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
 router.delete('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
     let course; 
     try {
+        const user = req.currentUser;
         course = await Course.findByPk(req.params.id); 
         if (course) {
-            await course.destroy();
-            res.status(204).end();
+            if (user.id == req.params.id) {
+                await course.destroy();
+                res.status(204).end(); 
+            } else {
+                res.sendStatus(403);
+            } 
         } else {
             res.sendStatus(404); 
         }
