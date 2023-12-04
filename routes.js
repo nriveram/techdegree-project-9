@@ -88,7 +88,7 @@ router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
         course = await Course.findByPk(req.params.id); 
         if (course) {
             // checks if course id and user id match 
-            if (user.id == req.params.id) {
+            if (user.id == course.userId) {
                 await course.update(req.body);
                 res.status(204).end();
             } else {
@@ -115,7 +115,7 @@ router.delete('/courses/:id', authenticateUser, asyncHandler(async (req, res) =>
         const user = req.currentUser;
         course = await Course.findByPk(req.params.id); 
         if (course) {
-            if (user.id == req.params.id) {
+            if (user.id == course.userId) {
                 await course.destroy();
                 res.status(204).end(); 
             } else {
